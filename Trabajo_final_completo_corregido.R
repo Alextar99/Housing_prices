@@ -1952,7 +1952,7 @@ idx_sample <- sample(nrow(train_clust_scaled), n_sample)
 clust_sample <- train_clust_scaled[idx_sample, ]
 dist_eucl <- dist(clust_sample, method = "euclidean")
 
-# Comparación de métodos de enlace (estilo Alejandro)
+# Comparación de métodos de enlace
 hc_complete <- hclust(dist_eucl, method = "complete")
 hc_average  <- hclust(dist_eucl, method = "average")
 hc_single   <- hclust(dist_eucl, method = "single")
