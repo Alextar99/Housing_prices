@@ -1972,17 +1972,17 @@ cat(sprintf("  Ward (D2): %.4f\n", coph_ward))
 
 metodos_coph <- c(Complete = coph_complete, Average = coph_average,
                   Single = coph_single, Ward = coph_ward)
-mejor_metodo  <- names(which.max(metodos_coph))
-metodo_hclust <- switch(mejor_metodo,
-                        Complete = "complete", Average = "average",
-                        Single   = "single",   Ward    = "ward.D2")
-cat(sprintf("\nMétodo seleccionado por cofenético: %s (%.4f)\n",
-            mejor_metodo, max(metodos_coph)))
+cat("\nCoeficientes cofenéticos (informativo):\n")
+print(round(metodos_coph, 4))
 
-# hc_final apunta al objeto del método ganador (Punto 4)
-hc_final <- switch(metodo_hclust,
-                   "complete" = hc_complete, "average" = hc_average,
-                   "single"   = hc_single,   "ward.D2" = hc_ward)
+# Se selecciona Ward por coherencia con el objetivo de particionar:
+# minimiza varianza intra-clúster (criterio análogo a K-Means)
+# y produce grupos equilibrados, evitando el chaining effect
+mejor_metodo  <- "Ward"
+metodo_hclust <- "ward.D2"
+hc_final      <- hc_ward
+cat(sprintf("\nMétodo seleccionado: %s (minimiza varianza intra-clúster)\n",
+            mejor_metodo))
 
 # Dendrograma con corte K=4 (método ganador, con dendextend)
 dend_ward <- as.dendrogram(hc_final)
