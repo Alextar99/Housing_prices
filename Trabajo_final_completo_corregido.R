@@ -1682,13 +1682,14 @@ cat(strrep("=", 65), "\n")
 # ==================================================================
 
 cat("\n--- e.1) Análisis de Correspondencias Simples (CA) ---\n")
-
+ 
 # --- e.1.1) Tabla 1: Neighborhood × Grupo de Calidad ---
 top_neighs <- train %>% count(Neighborhood) %>% arrange(desc(n)) %>%
   slice_head(n = 10) %>% pull(Neighborhood)
-
+ 
 train_ca <- train %>%
   filter(Neighborhood %in% top_neighs) %>%
+  droplevels() %>%   # elimina niveles vacíos del factor Neighborhood tras el filtrado
   mutate(
     QualGrupo = case_when(
       as.numeric(OverallQual) <= 4  ~ "Baja (1-4)",
@@ -1697,22 +1698,22 @@ train_ca <- train %>%
     ),
     QualGrupo = factor(QualGrupo, levels = c("Baja (1-4)", "Media (5-7)", "Alta (8-10)"))
   )
-
+ 
 tabla_cont_1 <- table(train_ca$Neighborhood, train_ca$QualGrupo)
 cat("\nTabla de contingencia: Neighborhood × Grupo de Calidad\n")
 print(tabla_cont_1)
-
+ 
 chi_test_1 <- test_independencia(tabla_cont_1, "Neighborhood × Grupo de Calidad")
-
+ 
 res_ca1 <- CA(tabla_cont_1, graph = FALSE)
 eig_ca1 <- get_eigenvalue(res_ca1)
 cat("\n--- Autovalores del CA ---\n"); print(round(eig_ca1, 3))
-
+ 
 p_scree_ca1 <- fviz_screeplot(res_ca1, addlabels = TRUE, ylim = c(0, 100)) +
   labs(title = "Scree Plot — CA: Neighborhood × Calidad",
        subtitle = "% de inercia explicada por dimensión") + theme_hp
 print(p_scree_ca1)
-
+ 
 p_ca1_biplot <- fviz_ca_biplot(res_ca1, repel = TRUE,
                                col.row = "#2C7BB6", col.col = "#D7191C",
                                shape.row = 17, shape.col = 15, labelsize = 4) +
@@ -1720,14 +1721,28 @@ p_ca1_biplot <- fviz_ca_biplot(res_ca1, repel = TRUE,
        subtitle = sprintf("Dim.1 = %.1f%% + Dim.2 = %.1f%% → %.1f%% inercia explicada",
                           eig_ca1[1,2], eig_ca1[2,2], eig_ca1[1,3])) + theme_hp
 print(p_ca1_biplot)
-
+ 
 p_ca1_row <- fviz_contrib(res_ca1, choice = "row", axes = 1:2, top = 10, fill = "#2C7BB6") +
   labs(title = "Contribución de los barrios a Dim.1-2") + theme_hp
 p_ca1_col <- fviz_contrib(res_ca1, choice = "col", axes = 1:2, fill = "#D7191C") +
   labs(title = "Contribución de los niveles de calidad a Dim.1-2") + theme_hp
 grid.arrange(p_ca1_row, p_ca1_col, ncol = 2,
              top = "Contribuciones al Análisis de Correspondencias Simple")
-
+ 
+ 
+# --- e.1.2) Tabla 2: BldgType × SaleCondition ---
+cat("\n--- Segundo CA: BldgType × SaleCondition ---\n")
+tabla_cont_2 <- table(train$BldgType, train$SaleCondition)
+print(tabla_cont_2)
+ 
+chi_test_2 <- test_independencia(tabla_cont_2, "BldgType × SaleCondition")
+ 
+res_ca2 <- CA(tabla_cont_2, graph = FALSE)
+p_ca2_biplot <- fviz_ca_biplot(res_ca2, repel = TRUE, map = "rowprincipal",
+                               col.row = "#2C7BB6", col.col = "#D7191C", labelsize = 4) +
+  labs(title    = "CA Biplot asimétrico: BldgType × SaleCondition",
+       subtitle = "Mapa de filas en coordenadas principales") + theme_hp
+print(p_ca2_biplot)
 
 # --- e.1.2) Tabla 2: BldgType × SaleCondition ---
 cat("\n--- Segundo CA: BldgType × SaleCondition ---\n")
