@@ -1599,10 +1599,26 @@ print(p_biplot_qual)
 # ------------------------------------------------------------------
 p_contrib1 <- fviz_contrib(pca_out, choice = "var", axes = 1, top = 16,
                            fill = "#2C7BB6", color = "#2C7BB6") +
-  labs(title = "Contribución de variables a PC1") + theme_hp
+  coord_flip() +
+  labs(title = "Contribución a PC1", x = NULL, y = "Contribución (%)") +
+  theme_hp +
+  theme(
+    axis.text.y = element_text(size = 9, face = "bold"),
+    axis.text.x = element_text(size = 8),
+    plot.title  = element_text(size = 11, face = "bold")
+  )
+
 p_contrib2 <- fviz_contrib(pca_out, choice = "var", axes = 2, top = 16,
                            fill = "#D7191C", color = "#D7191C") +
-  labs(title = "Contribución de variables a PC2") + theme_hp
+  coord_flip() +
+  labs(title = "Contribución a PC2", x = NULL, y = "Contribución (%)") +
+  theme_hp +
+  theme(
+    axis.text.y = element_text(size = 9, face = "bold"),
+    axis.text.x = element_text(size = 8),
+    plot.title  = element_text(size = 11, face = "bold")
+  )
+
 grid.arrange(p_contrib1, p_contrib2, ncol = 2,
              top = "Contribución de las variables a las dos primeras CP")
 
