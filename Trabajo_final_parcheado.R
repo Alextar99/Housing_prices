@@ -1302,7 +1302,7 @@ cat("Frecuencias absolutas:\n"); print(addmargins(tab_qual_kit))
 chi_qk <- suppressWarnings(chisq.test(tab_qual_kit, correct = FALSE))
 test_independencia(tab_qual_kit, "OverallQual × KitchenQual")
 
-# Medidas ordinales incluyendo D de Somers (aportación de Yago)
+# Medidas ordinales incluyendo D de Somers 
 gamma_qk  <- GoodmanKruskalGamma(tab_qual_kit, conf.level = 0.95)
 somers_c  <- SomersDelta(tab_qual_kit, direction = "column", conf.level = 0.95)
 somers_r  <- SomersDelta(tab_qual_kit, direction = "row",    conf.level = 0.95)
@@ -1626,7 +1626,7 @@ cor_cp_precio <- cor(scores_pca, precio_pca, use = "pairwise.complete.obs")
 cat("\nCorrelación de las componentes principales con SalePrice:\n")
 print(round(cor_cp_precio, 4))
 
-# Scatter PC1 vs SalePrice (aportación de Yago: muy visual)
+# Scatter PC1 vs SalePrice 
 p_pc1_sp <- data.frame(PC1 = pca_out$x[, 1],
                        SalePrice = train$SalePrice[idx_pca],
                        OverallQual = qual_grupo) %>%
@@ -1844,7 +1844,7 @@ cat(sprintf("Observaciones válidas para clustering: %d / %d (%.1f%%)\n",
 
 cat("\n--- f.1) K-Means Clustering ---\n")
 
-# Método del codo y silueta (fviz_nbclust, estilo de Alejandro)
+# Método del codo y silueta 
 p_elbow <- fviz_nbclust(train_clust_scaled, kmeans, method = "wss",
                         k.max = 10, nstart = 50, iter.max = 50) +
   labs(title = "Método del codo — Suma de cuadrados intra-clúster (WSS)",
@@ -1944,7 +1944,7 @@ idx_sample <- sample(nrow(train_clust_scaled), n_sample)
 clust_sample <- train_clust_scaled[idx_sample, ]
 dist_eucl <- dist(clust_sample, method = "euclidean")
 
-# Comparación de métodos de enlace (estilo Alejandro)
+# Comparación de métodos de enlace 
 hc_complete <- hclust(dist_eucl, method = "complete")
 hc_average  <- hclust(dist_eucl, method = "average")
 hc_single   <- hclust(dist_eucl, method = "single")
