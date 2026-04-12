@@ -37,6 +37,7 @@ theme_hp <- theme_minimal(base_size = 11) +
     strip.text = element_text(face = "bold")
   )
 
+set.seed(123)
 
 # ==============================================================
 # a) PREPARACIÓN DE LOS DATOS
@@ -1871,7 +1872,6 @@ cat(sprintf("\nK óptimo (silueta máxima): K = %d\n", k_opt))
 # f.2) Comparación K=3, K=4, K=5 
 # ------------------------------------------------------------------
 # Selección reproducible (Punto 6: semilla antes de cualquier kmeans)
-set.seed(123)
 km2 <- kmeans(train_clust_scaled, centers = 2, nstart = 50)
 km3 <- kmeans(train_clust_scaled, centers = 3, nstart = 50)
 km4 <- kmeans(train_clust_scaled, centers = 4, nstart = 50)
@@ -1938,7 +1938,6 @@ hc_full       <- fastcluster::hclust(dist_clust, method = "ward.D2")
 clust_hc_full <- cutree(hc_full, k = 4)
 
 # Usamos una muestra para dendrograma legible
-set.seed(42)
 n_sample <- 200
 idx_sample <- sample(nrow(train_clust_scaled), n_sample)
 clust_sample <- train_clust_scaled[idx_sample, ]
