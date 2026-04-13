@@ -1929,94 +1929,165 @@ print(p_sil)
 # ==================================================================
 # f.3) CLÚSTER JERÁRQUICO
 # ==================================================================
+# Se comparan los cuatro métodos: completo, promedio, individual y centroide.
+# La selección se realiza mediante el coeficiente cofenético, que mide
+# la correlación entre las distancias originales y las reconstruidas
+# a partir del dendrograma (valores cercanos a 1 = mejor fidelidad).
+# ==================================================================
 
 cat("\n--- f.3) Clúster Jerárquico ---\n")
 
-# --- Jerárquico SOBRE TODA LA MUESTRA — Punto 3 ---
-# Usa fastcluster para que sea factible sobre las 1.458 observaciones
-hc_full       <- fastcluster::hclust(dist_clust, method = "ward.D2")
-clust_hc_full <- cutree(hc_full, k = 4)
+# ------------------------------------------------------------------
+# Preparación: matrices de distancia
+# ------------------------------------------------------------------
+# El método "centroid" de hclust requiere distancias euclídeas AL
+# CUADRADO como input. Por eso se construye una matriz
+# específica para él, mientras que los otros tres enlaces usan la
+# distancia euclídea estándar.
 
-# Usamos una muestra para dendrograma legible
-n_sample <- 200
-idx_sample <- sample(nrow(train_clust_scaled), n_sample)
+# Distancias sobre la muestra completa (para partición final)
+dist_clust_sq <- dist_clust^2
+
+# Muestra reducida para dendrogramas legibles
+n_sample     <- 200
+idx_sample   <- sample(nrow(train_clust_scaled), n_sample)
 clust_sample <- train_clust_scaled[idx_sample, ]
-dist_eucl <- dist(clust_sample, method = "euclidean")
+dist_eucl    <- dist(clust_sample, method = "euclidean")
+dist_eucl_sq <- dist_eucl^2
 
-# Comparación de métodos de enlace 
-hc_complete <- hclust(dist_eucl, method = "complete")
-hc_average  <- hclust(dist_eucl, method = "average")
-hc_single   <- hclust(dist_eucl, method = "single")
-hc_ward     <- hclust(dist_eucl, method = "ward.D2")
+# ------------------------------------------------------------------
+# Ajuste de los cuatro métodos de enlace
+# ------------------------------------------------------------------
+hc_complete <- hclust(dist_eucl,    method = "complete")
+hc_average  <- hclust(dist_eucl,    method = "average")
+hc_single   <- hclust(dist_eucl,    method = "single")
+hc_centroid <- hclust(dist_eucl_sq, method = "centroid")
 
-par(mfrow = c(1, 3))
+# ------------------------------------------------------------------
+# Visualización comparativa de los cuatro dendrogramas
+# ------------------------------------------------------------------
+par(mfrow = c(2, 2))
 plot(hc_complete, labels = FALSE, hang = -1, cex = 0.5,
-     main = "Vinculación Completa", xlab = "", sub = "")
-plot(hc_average, labels = FALSE, hang = -1, cex = 0.5,
-     main = "Vinculación Promedio", xlab = "", sub = "")
-plot(hc_ward, labels = FALSE, hang = -1, cex = 0.5,
-     main = "Método de Ward (D2)", xlab = "", sub = "")
+     main = "Vinculación Completa",   xlab = "", sub = "")
+plot(hc_average,  labels = FALSE, hang = -1, cex = 0.5,
+     main = "Vinculación Promedio",   xlab = "", sub = "")
+plot(hc_single,   labels = FALSE, hang = -1, cex = 0.5,
+     main = "Vinculación Individual", xlab = "", sub = "")
+plot(hc_centroid, labels = FALSE, hang = -1, cex = 0.5,
+     main = "Vinculación Centroide",  xlab = "", sub = "")
 par(mfrow = c(1, 1))
 
-# Coeficiente cofenético
+# ------------------------------------------------------------------
+# Coeficiente cofenético: correlación entre distancias originales
+# y distancias reconstruidas desde el dendrograma
+# ------------------------------------------------------------------
+# Importante: para centroid, la comparación se hace contra la matriz
+# de distancias al cuadrado (que es la que realmente se usó).
 coph_complete <- cor(cophenetic(hc_complete), dist_eucl)
 coph_average  <- cor(cophenetic(hc_average),  dist_eucl)
 coph_single   <- cor(cophenetic(hc_single),   dist_eucl)
-coph_ward     <- cor(cophenetic(hc_ward),     dist_eucl)
+coph_centroid <- cor(cophenetic(hc_centroid), dist_eucl_sq)
 
-cat("\nCoeficientes cofenéticos:\n")
-cat(sprintf("  Completa : %.4f\n", coph_complete))
-cat(sprintf("  Promedio : %.4f\n", coph_average))
-cat(sprintf("  Individual: %.4f\n", coph_single))
-cat(sprintf("  Ward (D2): %.4f\n", coph_ward))
+cat("\nCoeficientes cofenéticos (correlación dist. original ↔ dist. cofenética):\n")
+cat(sprintf("  Completa   : %.4f\n", coph_complete))
+cat(sprintf("  Promedio   : %.4f\n", coph_average))
+cat(sprintf("  Individual : %.4f\n", coph_single))
+cat(sprintf("  Centroide  : %.4f\n", coph_centroid))
 
-metodos_coph <- c(Complete = coph_complete, Average = coph_average,
-                  Single = coph_single, Ward = coph_ward)
-cat("\nCoeficientes cofenéticos (informativo):\n")
-print(round(metodos_coph, 4))
+metodos_coph <- c(Completa   = coph_complete,
+                  Promedio   = coph_average,
+                  Individual = coph_single,
+                  Centroide  = coph_centroid)
 
-# Se selecciona Ward por coherencia con el objetivo de particionar:
-# minimiza varianza intra-clúster (criterio análogo a K-Means)
-# y produce grupos equilibrados, evitando el chaining effect
-mejor_metodo  <- "Ward"
-metodo_hclust <- "ward.D2"
-hc_final      <- hc_ward
-cat(sprintf("\nMétodo seleccionado: %s (minimiza varianza intra-clúster)\n",
-            mejor_metodo))
+# ------------------------------------------------------------------
+# Diagnóstico de inversiones en el método del centroide
+# ------------------------------------------------------------------
+# El temario advierte que centroid puede producir inversiones:
+# fusiones que ocurren a una altura MENOR que la de fusiones previas,
+# lo que rompe la interpretación del dendrograma.
 
-# Dendrograma con corte K=4 (método ganador, con dendextend)
-dend_ward <- as.dendrogram(hc_final)
-dend_ward <- color_branches(dend_ward, k = 4,
-                            col = c("#2C7BB6", "#D7191C", "#1A9641", "#FDAE61"))
+inversiones_centroid <- sum(diff(hc_centroid$height) < 0)
+cat(sprintf("\nInversiones detectadas en el dendrograma de centroide: %d\n",
+            inversiones_centroid))
+if (inversiones_centroid > 0) {
+  cat("   → Confirma la advertencia teórica del temario: el método\n")
+  cat("     de centroide produce fusiones a alturas decrecientes,\n")
+  cat("     dificultando la interpretación jerárquica del árbol.\n")
+}
+
+# ------------------------------------------------------------------
+# Selección del método final siguiendo la teoría del curso
+# ------------------------------------------------------------------
+# Los apuntes (cluster_2.pdf) descartan explícitamente:
+#   - Individual (single) por el efecto de chaining
+#   - Centroide por las inversiones no deseadas
+# y recomiendan promedio y completo como los dos métodos preferidos.
+# Entre ambos, se selecciona el que presenta el mayor coeficiente
+# cofenético (mayor fidelidad a la estructura de distancias original).
+
+coph_preferidos <- c(Completa = coph_complete, Promedio = coph_average)
+mejor_metodo    <- names(which.max(coph_preferidos))
+metodo_hclust   <- ifelse(mejor_metodo == "Completa", "complete", "average")
+hc_final        <- if (mejor_metodo == "Completa") hc_complete else hc_average
+
+cat(sprintf("\nMétodo seleccionado: Vinculación %s (cofenético = %.4f)\n",
+            mejor_metodo, max(coph_preferidos)))
+cat("     · Individual descartado por crear clústeres en cadena elongados\n")
+cat("     · Centroide descartado por inversiones en el dendrograma\n")
+cat(sprintf("     · Entre completa y promedio, se elige %s por mayor\n",
+            tolower(mejor_metodo)))
+cat("       fidelidad empírica (coeficiente cofenético más alto)\n")
+
+# ------------------------------------------------------------------
+# Ejecución sobre la muestra completa con fastcluster
+# ------------------------------------------------------------------
+hc_full       <- fastcluster::hclust(dist_clust, method = metodo_hclust)
+clust_hc_full <- cutree(hc_full, k = 4)
+
+cat(sprintf("\nDistribución en clústeres jerárquicos (muestra completa, K = 4):\n"))
+print(table(clust_hc_full))
+
+# ------------------------------------------------------------------
+# Dendrograma final con corte en K = 4
+# ------------------------------------------------------------------
+dend_final <- as.dendrogram(hc_final)
+dend_final <- color_branches(dend_final, k = 4,
+                             col = c("#2C7BB6", "#D7191C", "#1A9641", "#FDAE61"))
 par(mar = c(2, 4, 3, 1))
-plot(dend_ward, main = sprintf("Dendrograma — Método %s (n = 200, K = 4)", mejor_metodo),
+plot(dend_final,
+     main = sprintf("Dendrograma — Vinculación %s (n = %d, K = 4)",
+                    mejor_metodo, n_sample),
      ylab = "Altura (distancia)", leaflab = "none")
 cutree_height <- mean(c(sort(hc_final$height, decreasing = TRUE)[3],
                         sort(hc_final$height, decreasing = TRUE)[4]))
 abline(h = cutree_height, col = "gray40", lty = 2, lwd = 1.5)
-text(10, cutree_height + 0.5, "Corte K=4", col = "gray40", cex = 0.9)
+text(10, cutree_height + 0.5, "Corte K = 4", col = "gray40", cex = 0.9)
 par(mar = c(5, 4, 4, 2) + 0.1)
 
+# Partición sobre la submuestra (para el gráfico en plano PCA)
 clust_hc <- cutree(hc_final, k = 4)
-cat("\nDistribución de observaciones en clústeres jerárquicos (K=4):\n")
-print(table(clust_hc))
 
-# --- Comparación K-Means vs Jerárquico (sobre muestra completa) — Punto 3 ---
+# ------------------------------------------------------------------
+# Comparación K-Means vs Jerárquico (sobre muestra completa)
+# ------------------------------------------------------------------
 ari <- mclust::adjustedRandIndex(km_final$cluster, clust_hc_full)
-cat(sprintf("\nÍndice de Rand ajustado (K-Means vs Ward full): %.3f\n", ari))
-cat("Tabla cruzada de particiones (K-Means vs Jerárquico full):\n")
+cat(sprintf("\nÍndice de Rand ajustado (K-Means vs Jerárquico %s): %.3f\n",
+            mejor_metodo, ari))
+cat("Tabla cruzada de particiones (K-Means vs Jerárquico):\n")
 print(table(KMeans = km_final$cluster, Jerarquico = clust_hc_full))
 
-# Visualización en plano PCA
+# ------------------------------------------------------------------
+# Visualización en el plano PCA
+# ------------------------------------------------------------------
 p_hc_pca <- fviz_cluster(list(data = clust_sample, cluster = clust_hc),
                          geom = "point", pointsize = 1.5, alpha = 0.5,
                          ellipse.type = "convex",
                          palette = c("#2C7BB6", "#D7191C", "#1A9641", "#FDAE61"),
                          ggtheme = theme_hp) +
-  labs(title = "Clúster Jerárquico (Ward, K=4) — Proyección en plano PCA",
+  labs(title    = sprintf("Clúster Jerárquico (%s, K = 4) — Proyección en plano PCA",
+                          mejor_metodo),
        subtitle = sprintf("Muestra de %d observaciones | Distancia euclídea", n_sample))
 print(p_hc_pca)
-
 
 # ==================================================================
 # f.4) PERFILADO Y COMPARACIÓN DE CLÚSTERES
