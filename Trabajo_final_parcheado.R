@@ -3,6 +3,8 @@
 # Kaggle: house-prices-advanced-regression-techniques
 # URL   : https://www.kaggle.com/competitions/
 #         house-prices-advanced-regression-techniques
+# Grupo 3: Alejandro García Arredondo, Noé Fuentes Pérez,
+# Alba Grisalvo Bautista, Yago Fernández Rueda
 # ==============================================================
 
 
