@@ -1735,7 +1735,7 @@ res_ord <- analizar_tabla_asociacion(
 )
 
 chi_ord <- suppressWarnings(chisq.test(con_ord, correct = FALSE))
-
+tab_qual_kit <- table(train$OverallQual, train$KitchenQual)
 res_qk <- analizar_tabla_asociacion(
   tabla = tab_qual_kit,
   nombre = "c.6) OverallQual × KitchenQual",
