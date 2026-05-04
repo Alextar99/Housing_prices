@@ -658,7 +658,7 @@ vars_plot <- c("SalePrice", "GrLivArea", "LotArea", "TotalSF")
 # Preparamos los datos en formato largo para ggplot
 df_comp <- bind_rows(
   train_pre_outliers %>% dplyr::select(all_of(vars_plot)) %>% mutate(Fase = "1. Original (Con Outliers)"),
-  train %>% dplyr::select(all_of(vars_plot)) %>% mutate(Fase = "2. Post-Imputación (k-NN, k=5)")
+  train %>% dplyr::select(all_of(vars_plot)) %>% mutate(Fase = sprintf("2. Post-Imputación (k-NN, k=%d)", k_optimo)
 ) %>%
   pivot_longer(cols = -Fase, names_to = "Variable", values_to = "Valor")
 
@@ -1084,13 +1084,59 @@ print(p_bldg)
 
 
 # ------------------------------------------------------------------
-# BLOQUE 12 — Frecuencias de variables categóricas clave
+# BLOQUE 12 — Selección sistemática de variables categóricas clave
 # ------------------------------------------------------------------
-cat_key <- c(
-  "MSZoning", "BldgType",    "HouseStyle",
-  "Foundation","GarageType", "SaleCondition",
-  "CentralAir","Neighborhood"
+
+# Se crea una variable auxiliar de precio alto/bajo para seleccionar
+# variables categóricas de forma no arbitraria.
+pricecat_eda <- factor(
+  ifelse(train$SalePrice <= median(train$SalePrice, na.rm = TRUE), "Bajo", "Alto"),
+  levels = c("Bajo", "Alto")
 )
+
+cramer_v_eda <- function(tabla) {
+  tabla <- tabla[rowSums(tabla) > 0, colSums(tabla) > 0, drop = FALSE]
+  if (nrow(tabla) < 2 || ncol(tabla) < 2) return(NA_real_)
+  
+  chi_sq <- suppressWarnings(chisq.test(tabla, correct = FALSE)$statistic)
+  n <- sum(tabla)
+  min_dim <- min(nrow(tabla), ncol(tabla)) - 1
+  
+  if (min_dim <= 0 || n == 0) return(NA_real_)
+  as.numeric(sqrt(chi_sq / (n * min_dim)))
+}
+
+vars_cat_eda <- train %>%
+  dplyr::select(where(~ is.factor(.) || is.character(.))) %>%
+  names() %>%
+  setdiff(c("Id", "SalePrice"))
+
+ranking_cat_eda <- purrr::map_dfr(vars_cat_eda, function(v) {
+  tabla <- table(train[[v]], pricecat_eda)
+  tibble(
+    Variable = v,
+    V_Cramer = cramer_v_eda(tabla)
+  )
+}) %>%
+  drop_na(V_Cramer) %>%
+  arrange(desc(V_Cramer)) %>%
+  mutate(
+    Intensidad = case_when(
+      V_Cramer < 0.10 ~ "Insignificante",
+      V_Cramer < 0.30 ~ "Débil",
+      V_Cramer < 0.50 ~ "Moderada",
+      TRUE ~ "Fuerte"
+    )
+  )
+
+cat("\nRanking sistemático de variables categóricas frente a PriceCat auxiliar:\n")
+print(head(ranking_cat_eda, 15))
+
+# Se seleccionan las 8 variables categóricas con mayor asociación con el precio
+# para los gráficos de frecuencias.
+cat_key <- ranking_cat_eda %>%
+  slice_head(n = 8) %>%
+  pull(Variable)
 
 plots_bar <- lapply(cat_key, function(v) {
   tmp <- train %>%
