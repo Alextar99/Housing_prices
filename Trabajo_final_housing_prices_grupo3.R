@@ -1924,6 +1924,116 @@ print(head(asociaciones_masivas, 15))
 
 
 # ==============================================================
+# c.9.b) MATRIZ GLOBAL CATEGÓRICA × CATEGÓRICA
+# ==============================================================
+
+cat("\n", strrep("-", 65), "\n")
+cat("--- c.9.b) Matriz global de asociación categórica × categórica ---\n")
+cat(strrep("-", 65), "\n")
+
+vars_cat_global <- train %>%
+  dplyr::select(where(~ is.factor(.) || is.character(.))) %>%
+  names() %>%
+  setdiff(c("Id"))
+
+analizar_par_categorico <- function(v1, v2, data) {
+  tabla <- table(data[[v1]], data[[v2]])
+  tabla <- tabla[rowSums(tabla) > 0, colSums(tabla) > 0, drop = FALSE]
+  
+  if (nrow(tabla) < 2 || ncol(tabla) < 2) {
+    return(tibble(
+      Var1 = v1,
+      Var2 = v2,
+      V_Cramer = NA_real_,
+      p_value = NA_real_,
+      Test = NA_character_,
+      Condicion_chi = NA_character_,
+      Niveles_1 = nrow(tabla),
+      Niveles_2 = ncol(tabla)
+    ))
+  }
+  
+  chi_aux <- suppressWarnings(chisq.test(tabla, correct = FALSE))
+  pct_esperadas_ok <- mean(chi_aux$expected >= 5)
+  condicion_ok <- pct_esperadas_ok >= 0.80
+  
+  test_res <- tryCatch({
+    if (condicion_ok) {
+      suppressWarnings(chisq.test(tabla, correct = FALSE))
+    } else {
+      suppressWarnings(chisq.test(tabla, simulate.p.value = TRUE, B = 2000))
+    }
+  }, error = function(e) NULL)
+  
+  tibble(
+    Var1 = v1,
+    Var2 = v2,
+    V_Cramer = calcular_v_cramer(tabla),
+    p_value = ifelse(is.null(test_res), NA_real_, test_res$p.value),
+    Test = ifelse(condicion_ok, "Chi-cuadrado", "Chi-cuadrado Monte Carlo"),
+    Condicion_chi = ifelse(condicion_ok, "Cumple", "No cumple"),
+    Niveles_1 = nrow(tabla),
+    Niveles_2 = ncol(tabla)
+  )
+}
+
+pares_cat_global <- combn(vars_cat_global, 2, simplify = FALSE)
+
+asociaciones_cat_global <- purrr::map_dfr(
+  pares_cat_global,
+  ~ analizar_par_categorico(.x[1], .x[2], train)
+) %>%
+  drop_na(V_Cramer) %>%
+  mutate(
+    p_ajustado = p.adjust(p_value, method = "BH"),
+    Dependencia = ifelse(!is.na(p_ajustado) & p_ajustado < 0.05, "Sí", "No"),
+    Intensidad = case_when(
+      V_Cramer < 0.10 ~ "Insignificante",
+      V_Cramer < 0.30 ~ "Débil",
+      V_Cramer < 0.50 ~ "Moderada",
+      TRUE ~ "Fuerte"
+    ),
+    Par = paste(Var1, "×", Var2)
+  ) %>%
+  arrange(desc(V_Cramer))
+
+cat("\nTop 20 asociaciones categórica × categórica:\n")
+print(head(asociaciones_cat_global, 20))
+
+# Tabla corta pensada para copiar a la memoria
+top8_global_memoria <- asociaciones_cat_global %>%
+  dplyr::select(Par, V_Cramer, p_value, p_ajustado, Intensidad, Test) %>%
+  slice_head(n = 8)
+
+cat("\nTop 8 para incluir en la memoria:\n")
+print(top8_global_memoria)
+
+# Gráfico Top 15 global
+p_top15_cat_global <- asociaciones_cat_global %>%
+  slice_head(n = 15) %>%
+  ggplot(aes(x = reorder(Par, V_Cramer), y = V_Cramer, fill = Intensidad)) +
+  geom_col(width = 0.65, color = "black", alpha = 0.85) +
+  geom_text(aes(label = sprintf("%.3f", V_Cramer)),
+            hjust = -0.15, size = 3.4, fontface = "bold") +
+  geom_hline(yintercept = 0.50, linetype = "solid", color = "gray25") +
+  geom_hline(yintercept = 0.30, linetype = "dashed", color = "gray45") +
+  geom_hline(yintercept = 0.10, linetype = "dotted", color = "gray60") +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, 1),
+                     expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Top 15 asociaciones entre variables categóricas",
+    subtitle = "Barrido sistemático de todas las parejas categórica × categórica mediante V de Cramer",
+    x = NULL,
+    y = "V de Cramer"
+  ) +
+  theme_hp +
+  theme(legend.position = "bottom")
+
+print(p_top15_cat_global)
+
+
+# ==============================================================
 # c.10) RECUPERACIÓN DEL GRÁFICO DE LAS 5 ASOCIACIONES CLAVE
 # ==============================================================
 cat("\n", strrep("-", 65), "\n")
