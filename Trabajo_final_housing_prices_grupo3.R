@@ -22,7 +22,8 @@ pacman::p_load(
   tidyverse, skimr, naniar, corrplot,
   plotly, scales, gridExtra, moments, viridis, nortest,
   robustbase, VIM, editrules, MASS, car, dlookr, fastDummies,
-  fastcluster, mclust
+  fastcluster, mclust,
+  DescTools, FactoMineR, factoextra
 )
 
 
