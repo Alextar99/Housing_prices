@@ -630,15 +630,19 @@ print(p_multi)
 
 # --- PASO 7: Imputación k-NN ----------------------------------
 cat("\nPASO 7 — AGREGACIÓN: Imputación k-NN (VIM)\n")
-cat("Se utiliza k=5 (por defecto en la literatura y VIM) porque es un heurístico robusto:\n")
-cat(" - Un k muy bajo (ej. k=1) tiene alta varianza y es sensible al ruido.\n")
-cat(" - Un k muy alto sobre-suaviza los datos, perdiendo la variabilidad local.\n")
-cat("La imputación usa la distancia de Gower, preservando las relaciones multivariantes.\n")
+cat(sprintf("Se utiliza k = %d, seleccionado mediante validación multicriterio.\n", k_optimo))
+cat("La elección compara precisión, robustez ante perturbaciones y fidelidad distribucional.\n")
+cat("La imputación usa distancia de Gower, adecuada para datos mixtos.\n")
 
-# Se imputan los NAs usando la mediana de los 5 vecinos más parecidos
-# imp_var = FALSE evita que se creen columnas booleanas innecesarias en el dataset
+# Control de coherencia con la memoria: en la versión final esperamos k = 5
+if (k_optimo != 5) {
+  warning(sprintf(
+    "El k óptimo calculado fue %d, no 5. Revisar la memoria antes de entregar.",
+    k_optimo
+  ))
+}
 
-train <- VIM::kNN(train, variable = out_vars, k = 5, imp_var = FALSE)
+train <- VIM::kNN(train, variable = out_vars, k = k_optimo, imp_var = FALSE)
 
 # Sincronización post-imputación
 train <- train %>%
