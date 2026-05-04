@@ -55,8 +55,8 @@ cat("CONTEXTO : Precios de venta de viviendas residenciales\n")
 cat("           en Ames, Iowa (EE.UU.) — años 2006-2010\n")
 cat(strrep("=", 65), "\n\n")
 
-# Ruta relativa. train.csv ha de estar en la misma carpeta que el script
-train_raw <- read.csv("C:/Users/alega/OneDrive/Documentos/Análisis de Datos/Trabajo ADAT/House-prices/train.csv", header = TRUE, stringsAsFactors = FALSE)
+# Ruta relativa: train.csv debe estar en la misma carpeta que este script
+train_raw <- read.csv("train.csv", header = TRUE, stringsAsFactors = FALSE)
 
 n_obs  <- nrow(train_raw)
 n_vars <- ncol(train_raw)
