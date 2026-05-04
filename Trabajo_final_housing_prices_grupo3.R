@@ -657,8 +657,13 @@ vars_plot <- c("SalePrice", "GrLivArea", "LotArea", "TotalSF")
 
 # Preparamos los datos en formato largo para ggplot
 df_comp <- bind_rows(
-  train_pre_outliers %>% dplyr::select(all_of(vars_plot)) %>% mutate(Fase = "1. Original (Con Outliers)"),
-  train %>% dplyr::select(all_of(vars_plot)) %>% mutate(Fase = sprintf("2. Post-Imputación (k-NN, k=%d)", k_optimo)
+  train_pre_outliers %>%
+    dplyr::select(all_of(vars_plot)) %>%
+    mutate(Fase = "1. Original (Con Outliers)"),
+  
+  train %>%
+    dplyr::select(all_of(vars_plot)) %>%
+    mutate(Fase = sprintf("2. Post-Imputación (k-NN, k=%d)", k_optimo))
 ) %>%
   pivot_longer(cols = -Fase, names_to = "Variable", values_to = "Valor")
 
@@ -666,13 +671,16 @@ p_comparativa <- ggplot(df_comp, aes(x = Fase, y = Valor, fill = Fase)) +
   geom_boxplot(alpha = 0.7, outlier.alpha = 0.5, outlier.size = 1) +
   facet_wrap(~Variable, scales = "free_y") +
   scale_y_continuous(labels = label_comma()) +
-  scale_fill_manual(values = c("1. Original (Con Outliers)" = "#FC8D59", "2. Post-Imputación (k-NN, k=5)" = "#74ADD1")) +
   labs(
     title = "Efecto del tratamiento de outliers y agregación k-NN",
-    subtitle = "Los valores extremos se identificaron mediante Boxplot Ajustado y se imputaron mediante VIM::kNN\nbasándose en los 5 vecinos más similares (distancia de Gower).",
-    x = NULL, y = "Valor"
+    subtitle = sprintf(
+      "Los valores extremos se identificaron mediante Boxplot Ajustado y se imputaron mediante VIM::kNN\nbasándose en los %d vecinos más similares (distancia de Gower).",
+      k_optimo
+    ),
+    x = NULL,
+    y = "Valor"
   ) +
-  theme_hp + 
+  theme_hp +
   theme(
     legend.position = "none",
     axis.text.x = element_text(angle = 15, hjust = 1, face = "bold"),
@@ -1055,7 +1063,13 @@ plots_bin <- lapply(bin_vars, function(v) {
               vjust = -0.4, size = 3, color = "grey30") +
     scale_y_continuous(labels = label_dollar(),
                        expand = expansion(mult = c(0, 0.15))) +
-    scale_fill_manual(values = c("No" = "#FC8D59", "Sí" = "#74ADD1")) +
+    scale_fill_manual(
+      values = setNames(
+        c("#FC8D59", "#74ADD1"),
+        c("1. Original (Con Outliers)",
+          sprintf("2. Post-Imputación (k-NN, k=%d)", k_optimo))
+      )
+    ) +
     labs(title = v, x = NULL, y = "Precio mediano") +
     theme_minimal(base_size = 9) +
     theme(plot.title = element_text(face = "bold"),
