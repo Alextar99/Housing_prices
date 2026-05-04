@@ -1257,6 +1257,22 @@ corrplot(
 cor_sp <- cor_mat["SalePrice", ]
 top_cor <- sort(abs(cor_sp[names(cor_sp) != "SalePrice"]), decreasing = TRUE)[1:10]
 
+top_cor_signed <- cor_sp[names(cor_sp) != "SalePrice"]
+top_cor_signed <- top_cor_signed[names(top_cor)]
+top_cor_spearman_tbl <- tibble(
+  Variable = names(top_cor_signed),
+  Rho_Spearman = as.numeric(top_cor_signed),
+  Abs_Rho = abs(as.numeric(top_cor_signed)),
+  Intensidad = case_when(
+    Abs_Rho < 0.30 ~ "Débil",
+    Abs_Rho < 0.70 ~ "Moderada",
+    TRUE ~ "Alta"
+  )
+)
+
+cat("\nTop 10 correlaciones de Spearman con SalePrice:\n")
+print(top_cor_spearman_tbl)
+
 p_cor <- data.frame(Variable = names(top_cor), Correlacion = as.numeric(top_cor)) %>%
   mutate(Variable = fct_reorder(Variable, Correlacion)) %>%
   ggplot(aes(x = Variable, y = Correlacion, fill = Correlacion)) +
@@ -2014,16 +2030,40 @@ asociaciones_cat_global <- purrr::map_dfr(
 cat("\nTop 20 asociaciones categórica × categórica:\n")
 print(head(asociaciones_cat_global, 20))
 
-# Tabla corta pensada para copiar a la memoria
-top8_global_memoria <- asociaciones_cat_global %>%
+# --------------------------------------------------------------
+# Top interpretable: excluimos variables derivadas o casi
+# deterministas para que la tabla de memoria no esté dominada
+# por relaciones tautológicas.
+# --------------------------------------------------------------
+
+vars_auxiliares_no_memoria <- c(
+  "PriceCat", "AgeCat", "SizeCat", "QualCat",
+  "HasPool", "HasGarage", "HasFireplace", "HasBasement"
+)
+
+asociaciones_cat_global_interpretable <- asociaciones_cat_global %>%
+  filter(
+    !Var1 %in% vars_auxiliares_no_memoria,
+    !Var2 %in% vars_auxiliares_no_memoria,
+    V_Cramer < 0.999
+  ) %>%
+  arrange(desc(V_Cramer))
+
+cat("\nTop 20 asociaciones categóricas interpretables, excluyendo variables derivadas/determinísticas:\n")
+print(head(asociaciones_cat_global_interpretable, 20))
+
+top8_global_memoria <- asociaciones_cat_global_interpretable %>%
   dplyr::select(Par, V_Cramer, p_value, p_ajustado, Intensidad, Test) %>%
   slice_head(n = 8)
+
+cat("\nTop 8 interpretable para incluir en la memoria:\n")
+print(top8_global_memoria)
 
 cat("\nTop 8 para incluir en la memoria:\n")
 print(top8_global_memoria)
 
 # Gráfico Top 15 global
-p_top15_cat_global <- asociaciones_cat_global %>%
+p_top15_cat_global <- asociaciones_cat_global_interpretable %>%
   slice_head(n = 15) %>%
   ggplot(aes(x = reorder(Par, V_Cramer), y = V_Cramer, fill = Intensidad)) +
   geom_col(width = 0.65, color = "black", alpha = 0.85) +
@@ -2107,6 +2147,22 @@ p_5_pares <- ggplot(pares_especificos, aes(x = reorder(Par, Valor), y = Valor, f
   theme(legend.position = "bottom", axis.text.y = element_text(face = "bold", size = 10))
 
 print(p_5_pares)
+
+cat("\nTabla resumen exacta de los 5 pares clave para la memoria:\n")
+
+tabla_5_pares_memoria <- pares_especificos %>%
+  mutate(
+    V_Cramer = round(Valor, 3),
+    Intensidad = case_when(
+      Valor < 0.10 ~ "Insignificante",
+      Valor < 0.30 ~ "Débil",
+      Valor < 0.50 ~ "Moderada",
+      TRUE ~ "Fuerte"
+    )
+  ) %>%
+  dplyr::select(Par, V_Cramer, Intensidad)
+
+print(tabla_5_pares_memoria)
 
 
 # ==============================================================
@@ -2795,6 +2851,16 @@ clust_hc_full <- cutree(hc_full, k = 4)
 
 cat(sprintf("\nDistribución en clústeres jerárquicos (muestra completa, K = 4):\n"))
 print(table(clust_hc_full))
+
+balance_hc <- table(clust_hc_full)
+prop_min_hc <- min(balance_hc) / sum(balance_hc)
+
+if (prop_min_hc < 0.01) {
+  warning(
+    "El corte jerárquico en K=4 produce clústeres degenerados o muy desbalanceados. ",
+    "No debe interpretarse como segmentación final comparable a K-means."
+  )
+}
 
 # ------------------------------------------------------------------
 # Dendrograma final con corte en K = 4
