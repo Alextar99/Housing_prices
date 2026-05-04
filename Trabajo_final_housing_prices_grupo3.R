@@ -2375,6 +2375,37 @@ res_ca1 <- CA(tabla_cont_1, graph = FALSE)
 eig_ca1 <- get_eigenvalue(res_ca1)
 cat("\n--- Autovalores del CA ---\n"); print(round(eig_ca1, 3))
 
+# Tabla de diagnóstico para interpretar CA: coordenadas, contribuciones y cos2
+ca1_row_diag <- tibble(
+  Categoria = rownames(res_ca1$row$coord),
+  Coord_Dim1 = res_ca1$row$coord[, 1],
+  Coord_Dim2 = res_ca1$row$coord[, 2],
+  Contrib_Dim1 = res_ca1$row$contrib[, 1],
+  Contrib_Dim2 = res_ca1$row$contrib[, 2],
+  Cos2_Dim1 = res_ca1$row$cos2[, 1],
+  Cos2_Dim2 = res_ca1$row$cos2[, 2],
+  Cos2_Plano = Cos2_Dim1 + Cos2_Dim2
+) %>%
+  arrange(desc(Contrib_Dim1 + Contrib_Dim2))
+
+ca1_col_diag <- tibble(
+  Categoria = rownames(res_ca1$col$coord),
+  Coord_Dim1 = res_ca1$col$coord[, 1],
+  Coord_Dim2 = res_ca1$col$coord[, 2],
+  Contrib_Dim1 = res_ca1$col$contrib[, 1],
+  Contrib_Dim2 = res_ca1$col$contrib[, 2],
+  Cos2_Dim1 = res_ca1$col$cos2[, 1],
+  Cos2_Dim2 = res_ca1$col$cos2[, 2],
+  Cos2_Plano = Cos2_Dim1 + Cos2_Dim2
+) %>%
+  arrange(desc(Contrib_Dim1 + Contrib_Dim2))
+
+cat("\nTop categorías-fila del CA por contribución total a Dim.1-2:\n")
+print(head(ca1_row_diag, 8))
+
+cat("\nCategorías-columna del CA: coordenadas, contribuciones y cos2:\n")
+print(ca1_col_diag)
+                       
 p_scree_ca1 <- fviz_screeplot(res_ca1, addlabels = TRUE, ylim = c(0, 100)) +
   labs(title = "Scree Plot — CA: Neighborhood × Calidad",
        subtitle = "% de inercia explicada por dimensión") + theme_hp
@@ -2483,6 +2514,30 @@ grid.arrange(p_mca_c1, p_mca_c2, ncol = 2,
 desc_mca <- dimdesc(res_mca, axes = c(1, 2))
 cat("\n--- Descripción de la Dimensión 1 del MCA ---\n"); print(desc_mca[[1]])
 cat("\n--- Descripción de la Dimensión 2 del MCA ---\n"); print(desc_mca[[2]])
+
+# Tabla de diagnóstico para interpretar MCA: coordenadas, contribuciones y cos2
+mca_diag <- tibble(
+  Categoria = rownames(res_mca$var$coord),
+  Coord_Dim1 = res_mca$var$coord[, 1],
+  Coord_Dim2 = res_mca$var$coord[, 2],
+  Contrib_Dim1 = res_mca$var$contrib[, 1],
+  Contrib_Dim2 = res_mca$var$contrib[, 2],
+  Cos2_Dim1 = res_mca$var$cos2[, 1],
+  Cos2_Dim2 = res_mca$var$cos2[, 2],
+  Cos2_Plano = Cos2_Dim1 + Cos2_Dim2
+) %>%
+  mutate(Contrib_Total = Contrib_Dim1 + Contrib_Dim2) %>%
+  arrange(desc(Contrib_Total))
+
+cat("\nTop 12 categorías activas del MCA por contribución total a Dim.1-2:\n")
+print(head(mca_diag, 12))
+
+cat("\nCategorías mejor representadas en el plano Dim.1-Dim.2 del MCA:\n")
+print(
+  mca_diag %>%
+    arrange(desc(Cos2_Plano)) %>%
+    slice_head(n = 12)
+)
 
 # Variables cuantitativas suplementarias proyectadas
 p_mca_quanti <- fviz_mca_var(res_mca, choice = "quanti.sup",
